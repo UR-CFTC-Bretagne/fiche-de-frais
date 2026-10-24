@@ -1,7 +1,8 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = new URL('../src/', import.meta.url);
+const root = fileURLToPath(new URL('../src/', import.meta.url));
 const paths = [];
 async function collect(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
@@ -13,7 +14,7 @@ async function collect(dir) {
 await collect(root);
 const violations = [];
 for (const file of paths) {
-  const path = relative(root.pathname, file).split(sep).join('/');
+  const path = relative(root, file).split(sep).join('/');
   const content = await readFile(file, 'utf8');
   const imports = [...content.matchAll(/(?:import|export)\s+(?:type\s+)?(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]/g)].map(x => x[1]);
   const forbiddenExternal = /\b(?:SpreadsheetApp|DriveApp|GmailApp|MailApp|CalendarApp|PropertiesService|Session|LockService)\b/;
