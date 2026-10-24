@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "module": "None",
+    "outDir": "dist",
+    "types": [
+      "google-apps-script"
+    ],
+    "rootDir": "src",
+    "removeComments": false
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "tests"
+  ]
+}
