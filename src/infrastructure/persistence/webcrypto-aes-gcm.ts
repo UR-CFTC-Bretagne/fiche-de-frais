@@ -13,7 +13,8 @@ function exactBuffer(bytes: Uint8Array): ArrayBuffer {
  */
 export class WebCryptoAesGcm implements AuthenticatedCipher {
   constructor(private readonly key: CryptoKey, private readonly provider: Crypto = crypto) {
-    if (key.algorithm.name !== 'AES-GCM' || !key.usages.includes('encrypt') || !key.usages.includes('decrypt')) {
+    if (key.algorithm.name !== 'AES-GCM' || (key.algorithm as AesKeyAlgorithm).length !== 256 ||
+        !key.usages.includes('encrypt') || !key.usages.includes('decrypt')) {
       throw new Error('Clé AES-GCM non autorisée');
     }
   }
