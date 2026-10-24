@@ -2,7 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": false,
-    "module": "None",
+    "module": "ESNext",
     "outDir": "dist",
     "types": [
       "google-apps-script"
