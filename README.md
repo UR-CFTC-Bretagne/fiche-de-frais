@@ -31,7 +31,7 @@ Les valeurs suivantes proviennent de la fiche UR et **nécessitent validation fo
 
 Les réunions remboursées par un organisme extérieur ne doivent pas donner lieu à un double remboursement UR. Le respect des conditions de convocation et de présence doit être contrôlé.
 
-## Architecture cible (non implémentée)
+## Architecture cible et socle en développement
 
 - Monolithe modulaire en **TypeScript**, compilé pour **Google Apps Script**, avec **clasp** et GitHub.
 - Interface HTML/CSS/JavaScript ; couche métier indépendante de Google Sheets.
@@ -39,7 +39,61 @@ Les réunions remboursées par un organisme extérieur ne doivent pas donner lie
 - Versionnement des règles et barèmes, journalisation des actions, idempotence des paiements et tests automatisés.
 - Gestion stricte des accès et des secrets ; possibilité ultérieure de remplacer le stockage.
 
-Il s'agit d'une **architecture envisagée**, pas d'une application déjà développée.
+Un socle TypeScript, des adaptateurs expérimentaux et des tests existent désormais. **Aucune application déployée ni utilisable en production n'est disponible.**
+
+## Modèle de données
+
+Le modèle distingue **le noyau actuellement codé (prototype V1)** et **le modèle métier cible (à implémenter et à valider)**. Les noms ci-dessous sont des contrats logiques : ils ne signifient pas que toutes les tables Google Sheets, relations ou API existent déjà.
+
+### Schéma relationnel métier cible
+
+```mermaid
+erDiagram
+    UTILISATEUR ||--o{ HABILITATION : possede
+    UTILISATEUR ||--o{ NOTE_FRAIS : demande
+    INSTANCE ||--o{ NOTE_FRAIS : concerne
+    NOTE_FRAIS ||--|{ LIGNE_FRAIS : contient
+    LIGNE_FRAIS ||--o{ JUSTIFICATIF : appuie
+    NOTE_FRAIS ||--o{ VALIDATION : fait_objet
+    NOTE_FRAIS ||--o{ IMPUTATION : ventile
+    NOTE_FRAIS ||--o{ PAIEMENT : regle
+    NOTE_FRAIS ||--o{ EVENEMENT_AUDIT : trace
+    BAREME ||--o{ LIGNE_FRAIS : calcule
+```
+
+### Entités principales
+
+| Entité / référentiel | Attributs principaux | Rôle et contraintes |
+| --- | --- | --- |
+| `UTILISATEUR` | `id`, `subject` (identité serveur), `actif` | Identifiant interne stable ; données personnelles et INARIC dans un référentiel privé si nécessaires. Pas d'identifiant ou de rôle fiable provenant du client. |
+| `HABILITATION` | `id`, `utilisateurId`, `role`, `perimetre`, `actif`, `dateDebut`, `dateFin` | Rôles `CLAIMANT`, `REVIEWER`, `FINANCE`, `TREASURER`, `ADMIN`, `AUDITOR` ; révocation et moindre privilège. |
+| `INSTANCE` | `id`, `type`, `organisme`, `libelle` | Mandat, réunion, activité ou instance paritaire ; nomenclature à valider. |
+| `NOTE_FRAIS` | `id`, `claimantId`, `instanceId?`, `fiscalYear`, `purpose`, `status`, `createdAt`, `version`* | Dossier unique rattaché au demandeur ; cycle de vie contrôlé, version pour concurrence optimiste. |
+| `LIGNE_FRAIS` | `id`, `reportId`, `kind`, `description`, `amountCents`, `incurredOn`, `baremeId?` | Montants en **centimes entiers** ; catégories `TRAVEL`, `MEAL`, `ACCOMMODATION`, `OTHER`. Distinction montant demandé / retenu à ajouter. |
+| `JUSTIFICATIF` | `id`, `lineId?`, `reportId`, `type`, `privateFileRef`, `checksum`, `uploadedAt` | Métadonnées uniquement dans la base ; fichiers dans un espace privé avec contrôle d'accès et durée de conservation. |
+| `BAREME` | `id`, `categorie`, `valeur`, `unite`, `dateEffet`, `dateFin`, `statutValidation` | Versionnable, sans modification rétroactive ; barèmes repas contradictoires **non arbitrés**. |
+| `VALIDATION` | `id`, `reportId`, `actorId`, `decision`, `commentaire`, `decidedAt` | Historique immuable des contrôles, demandes de correction et décisions. |
+| `IMPUTATION` | `id`, `reportId`, `source`, `amountCents`, `eligibilityDecision` | `source ∈ {AGFPN, URB}` ; somme des affectations = montant retenu ; éligibilité AGFPN évaluée séparément. |
+| `PAIEMENT` | `id`, `reportId`, `amountCents`, `mode`, `reference`, `paidAt`, `status` | Éviter les doubles paiements ; état et référence rapprochables avec la comptabilité. |
+| `EVENEMENT_AUDIT` | `id`, `reportId`, `actorId`, `action`, `occurredAt`, `metadata` | Journal append-only et non sensible ; traçabilité des transitions et modifications. |
+
+*L'astérisque signale notamment les champs prévus mais absents des interfaces TypeScript actuelles.*
+
+### Relations et règles d'intégrité
+
+- Un utilisateur peut posséder plusieurs habilitations et déposer plusieurs notes ; **chaque note possède un demandeur unique**.
+- Une note comprend une ou plusieurs lignes lorsqu'elle est soumise ; un brouillon peut encore être vide. Les justificatifs requis dépendent de la nature de la dépense.
+- Les liens `reportId`, `lineId`, `claimantId` et autres références sont contrôlés par le service métier ; **ne pas supposer de clés étrangères natives dans Google Sheets**.
+- `amountCents` est un entier non négatif ; les sommes, plafonds et arrondis sont définis par des règles métier testées et versionnées.
+- Les imputations AGFPN et URB doivent équilibrer le montant retenu, **sans présumer de l'éligibilité AGFPN**.
+- Toute transition de statut, modification significative ou décision de paiement doit être autorisée, horodatée et auditée. Les écritures sensibles nécessitent une protection contre la concurrence.
+- Les justificatifs, coordonnées bancaires et données d'appartenance syndicale restent **hors du dépôt public**, accessibles uniquement selon les habilitations et durées de conservation validées.
+
+### Périmètre effectivement implémenté
+
+Les interfaces [`ExpenseReport`](src/domain/entities/expense-report.ts) et [`ExpenseLine`](src/domain/entities/expense-line.ts) sont présentes, ainsi que le [contrôle d'équilibre des imputations](src/domain/services/allocation.ts) et des [types de rôles](src/application/ports/actor.ts). Le dépôt Google Sheets actuel ne persiste que les **brouillons `ExpenseReport`** : onglet `ExpenseReports`, colonnes `ID`, `CLAIMANT_ID_JSON`, `FISCAL_YEAR`, `PURPOSE_JSON`, `STATUS`, `CREATED_AT_JSON`, avec la version de schéma **1** dans `_SchemaMeta` (`EXPENSE_REPORT_SCHEMA_VERSION`).
+
+La persistance des lignes, justificatifs, validations, imputations, paiements et audits, les migrations complètes et le modèle physique cible **restent à développer**. Toute évolution du schéma requiert une migration versionnée, des tests, une sauvegarde et une procédure de retour arrière. Voir [ADR-0003](docs/adr/0003-versionnement-sheets.md) et [principes d'architecture](docs/architecture/principes-maintenance.md).
 
 ## Gouvernance et backlog
 
