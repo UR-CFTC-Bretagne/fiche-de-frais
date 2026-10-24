@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { prepareBackup, verifyBackup, type BackupContent } from '../../src/infrastructure/persistence/backup-archive';
 
@@ -7,7 +6,10 @@ const codec = {
   decode: (bytes: Uint8Array) => new TextDecoder('utf-8', { fatal: true }).decode(bytes),
 };
 const digest = {
-  sha256: async (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex'),
+  sha256: async (bytes: Uint8Array) => {
+    const hash = await crypto.subtle.digest('SHA-256', Uint8Array.from(bytes).buffer);
+    return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');
+  },
 };
 const data: BackupContent = {
   version: 1,
