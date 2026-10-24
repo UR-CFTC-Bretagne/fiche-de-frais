@@ -1,0 +1,17 @@
+{
+  "name": "@ur-cftc-bretagne/fiche-de-frais",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Socle technique de l'application de notes de frais UR CFTC Bretagne",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json",
+    "check": "npm run typecheck && npm run test"
+  },
+  "devDependencies": {
+    "@types/google-apps-script": "^1.0.90",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}
