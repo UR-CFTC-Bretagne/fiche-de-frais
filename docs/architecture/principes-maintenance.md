@@ -38,3 +38,7 @@ Ces responsabilités sont des limites conceptuelles. Il n'est pas nécessaire de
 
 ## Conditions de qualité d'une User Story
 Une fonctionnalité n'est considérée terminée qu'après tests automatisés, vérification d'habilitations, documentation des règles, gestion des erreurs, CI réussie et revue du code. Une intégration Google réelle exige en plus une recette de sécurité et de confidentialité.
+
+## Tests de contrats des adaptateurs
+
+La suite `tests/contracts/expense-report-repository.contract.test.ts` valide les mêmes invariants pour la persistance mémoire et l'adaptateur Sheets simulé : recherche d'une note absente, lecture après création, rejet d'un identifiant déjà utilisé et absence de référence mutable partagée. Tout futur adaptateur SQL ou autre doit être ajouté à cette suite avant d'être accepté. Ces essais ne prouvent pas encore la sûreté d'une connexion réelle à Google Sheets : verrouillage et permissions seront vérifiés lors des tests d'intégration.
