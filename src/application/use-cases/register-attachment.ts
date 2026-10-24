@@ -6,6 +6,7 @@ import type { ExpenseLineRepository } from '../ports/expense-line-repository';
 import type { AttachmentRepository } from '../ports/attachment-repository';
 import type { IdGenerator } from '../ports/id-generator';
 import type { Clock } from '../ports/clock';
+import type { StoredAttachmentVerifier } from '../ports/stored-attachment-verifier';
 
 export interface RegisterAttachmentInput {
   reportId: string;
@@ -29,6 +30,7 @@ export class RegisterAttachment {
     private readonly attachments: AttachmentRepository,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
+    private readonly verifier: StoredAttachmentVerifier,
   ) {}
 
   async execute(actor: Actor, input: RegisterAttachmentInput): Promise<Attachment> {
@@ -37,15 +39,22 @@ export class RegisterAttachment {
     if (!report || report.claimantId !== actor.id) throw new Error('Accès refusé');
     if (report.status !== 'DRAFT') throw new Error('Note non modifiable');
     const lines = await this.lines.findByReportId(report.id);
+    const verified = await this.verifier.verify(input.privateFileRef);
+    if (!verified || verified.privateFileRef !== input.privateFileRef ||
+        verified.reportId !== report.id || verified.uploadedByActorId !== actor.id ||
+        verified.sha256 !== input.sha256 || verified.mediaType !== input.mediaType ||
+        verified.sizeBytes !== input.sizeBytes) {
+      throw new Error('Justificatif non vérifié dans le stockage privé');
+    }
     const attachment: Attachment = {
       id: this.ids.nextId(),
       reportId: report.id,
       lineId: input.lineId,
       kind: input.kind,
       privateFileRef: input.privateFileRef,
-      sha256: input.sha256,
-      mediaType: input.mediaType,
-      sizeBytes: input.sizeBytes,
+      sha256: verified.sha256,
+      mediaType: verified.mediaType,
+      sizeBytes: verified.sizeBytes,
       uploadedAt: this.clock.nowIso(),
     };
     validateAttachmentOwnership(attachment, report.id, lines.map(line => line.id));
