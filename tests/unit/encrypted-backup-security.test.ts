@@ -21,7 +21,7 @@ async function fixture() {
   const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
   const records = new InMemoryEncryptedRecordRepository();
   const store = new EncryptedBackupStore(new WebCryptoAesGcm(key), records);
-  return { records, store };
+  return { records, store, key };
 }
 
 describe('résistance du stockage chiffré aux altérations', () => {
@@ -43,7 +43,7 @@ describe('résistance du stockage chiffré aux altérations', () => {
   });
 
   it('refuse toute modification du texte chiffré', async () => {
-    const { records, store } = await fixture();
+    const { records, store, key } = await fixture();
     await store.write(data());
     const original = await records.find('fictive-archive-01');
     expect(original).not.toBeNull();
@@ -57,25 +57,20 @@ describe('résistance du stockage chiffré aux altérations', () => {
       saveIfAbsent: async () => { throw new Error('En lecture seule'); },
       find: async () => modified,
     };
-    const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-    // Ici nous contrôlons d'abord le rejet de clé différente ; le test de
-    // contenu altéré avec la clé d'origine est réalisé via le même fournisseur.
     await expect(new EncryptedBackupStore(new WebCryptoAesGcm(key), corrupted)
       .read('fictive-archive-01')).rejects.toThrow();
   });
 
   it('refuse une attaque par substitution d’identifiant', async () => {
-    const { records, store } = await fixture();
+    const { records, store, key } = await fixture();
     await store.write(data());
     const original = await records.find('fictive-archive-01');
     const substituted: EncryptedRecordRepository = {
       saveIfAbsent: async () => { throw new Error('En lecture seule'); },
       find: async () => original,
     };
-    // Sans connaître la clé, un identifiant de recherche modifié ne peut
-    // autoriser le déchiffrement des données associées à un autre identifiant.
-    const otherKey = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-    await expect(new EncryptedBackupStore(new WebCryptoAesGcm(otherKey), substituted)
+    // Même avec la bonne clé, l'identifiant associé à l'archive est authentifié.
+    await expect(new EncryptedBackupStore(new WebCryptoAesGcm(key), substituted)
       .read('fictive-archive-99')).rejects.toThrow();
   });
 
