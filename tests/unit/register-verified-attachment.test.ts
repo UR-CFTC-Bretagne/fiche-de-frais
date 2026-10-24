@@ -12,8 +12,9 @@ const fileRef = 'file-fictif-prive-001';
 const pdf = new TextEncoder().encode('%PDF-1.4\nFICHIER-FICTIF');
 const digest = {
   sha256: async (bytes: Uint8Array) => {
-    const copy = Uint8Array.from(bytes);
-    const hash = await crypto.subtle.digest('SHA-256', copy.buffer);
+    const buffer = new ArrayBuffer(bytes.byteLength);
+    new Uint8Array(buffer).set(bytes);
+    const hash = await crypto.subtle.digest('SHA-256', buffer);
     return Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2, '0')).join('');
   },
 };
