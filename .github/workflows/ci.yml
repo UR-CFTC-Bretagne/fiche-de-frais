@@ -1,0 +1,28 @@
+name: Vérifications TypeScript
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verification:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Installer les dépendances
+        run: npm install --no-audit --no-fund
+      - name: Vérifier les types
+        run: npm run typecheck
+      - name: Exécuter les tests
+        run: npm test
+      - name: Compilation TypeScript préliminaire
+        run: npm run build
