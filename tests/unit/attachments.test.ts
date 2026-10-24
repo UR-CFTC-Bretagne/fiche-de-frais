@@ -15,7 +15,7 @@ const attachment = (updates: Partial<Attachment> = {}): Attachment => ({
   uploadedAt: '2026-10-25T10:00:00.000Z', ...updates,
 });
 
-async function fixture(owner = actor.id, status: 'DRAFT' | 'SUBMITTED' = 'DRAFT') {
+async function fixture(owner = actor.id, status: 'DRAFT' | 'SUBMITTED' = 'DRAFT', verify = true) {
   const reports = new InMemoryExpenseReportRepository();
   const lines = new InMemoryExpenseLineRepository();
   const attachments = new InMemoryAttachmentRepository();
@@ -32,6 +32,10 @@ async function fixture(owner = actor.id, status: 'DRAFT' | 'SUBMITTED' = 'DRAFT'
     useCase: new RegisterAttachment(
       reports, lines, attachments,
       { nextId: () => 'attach-001' }, { nowIso: () => '2026-10-25T10:00:00.000Z' },
+      { verify: async ref => verify ? {
+        privateFileRef: ref, reportId: 'report-001', uploadedByActorId: actor.id,
+        sha256: 'a'.repeat(64), mediaType: 'application/pdf' as const, sizeBytes: 128,
+      } : null },
     ),
   };
 }
@@ -56,12 +60,29 @@ describe('intégrité des justificatifs', () => {
 });
 
 describe('enregistrement des métadonnées', () => {
+  it('refuse un document sans attestation de stockage vérifiée', async () => {
+    const { useCase, attachments } = await fixture(actor.id, 'DRAFT', false);
+    await expect(useCase.execute(actor, {
+      reportId: 'report-001', lineId: null, kind: 'OTHER',
+      privateFileRef: 'private-document-fictif-001', sha256: 'a'.repeat(64),
+      mediaType: 'application/pdf', sizeBytes: 128,
+    })).rejects.toThrow('non vérifié');
+    expect(await attachments.findByReportId('report-001')).toHaveLength(0);
+  });
+  it('refuse une empreinte client divergente', async () => {
+    const { useCase } = await fixture();
+    await expect(useCase.execute(actor, {
+      reportId: 'report-001', lineId: null, kind: 'OTHER',
+      privateFileRef: 'private-document-fictif-001', sha256: 'b'.repeat(64),
+      mediaType: 'application/pdf', sizeBytes: 128,
+    })).rejects.toThrow('non vérifié');
+  });
   it('référence un document fictif sur la bonne ligne', async () => {
     const { useCase, attachments } = await fixture();
     const record = await useCase.execute(actor, {
       reportId: 'report-001', lineId: 'line-001', kind: 'RECEIPT',
-      privateFileRef: 'private-document-fictif-001', sha256: 'b'.repeat(64),
-      mediaType: 'image/jpeg', sizeBytes: 300,
+      privateFileRef: 'private-document-fictif-001', sha256: 'a'.repeat(64),
+      mediaType: 'application/pdf', sizeBytes: 128,
     });
     expect(record.lineId).toBe('line-001');
     expect(await attachments.findByReportId('report-001')).toHaveLength(1);
