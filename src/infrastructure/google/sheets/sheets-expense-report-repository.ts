@@ -34,7 +34,7 @@ function fromRow(row: unknown[]): ExpenseReport {
   const parsedDate: unknown = JSON.parse(createdAt);
   if (typeof parsedClaimant !== 'string' || !parsedClaimant ||
       typeof parsedPurpose !== 'string' || typeof parsedDate !== 'string' ||
-      !Number.isInteger(fiscalYear) || fiscalYear < 2000 || fiscalYear > 2100) {
+      typeof fiscalYear !== 'number' || !Number.isInteger(fiscalYear) || fiscalYear < 2000 || fiscalYear > 2100) {
     throw new Error('Données de note invalides');
   }
   return {
