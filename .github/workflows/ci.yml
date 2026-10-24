@@ -20,6 +20,8 @@ jobs:
           node-version: '22'
       - name: Installer les dépendances
         run: npm install --no-audit --no-fund
+      - name: Vérifier les frontières architecturales
+        run: npm run check:architecture
       - name: Vérifier les types
         run: npm run typecheck
       - name: Exécuter les tests
