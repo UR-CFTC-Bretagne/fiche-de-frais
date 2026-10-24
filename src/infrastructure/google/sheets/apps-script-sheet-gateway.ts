@@ -2,6 +2,7 @@ import {
   EXPENSE_REPORT_HEADERS,
   type ExpenseReportSheetGateway,
 } from './sheets-expense-report-repository';
+import { assertAppsScriptSchema } from './schema-metadata';
 
 /**
  * Adaptateur Google Apps Script, non activé tant que l'identité et la
@@ -20,6 +21,7 @@ export class AppsScriptSheetGateway implements ExpenseReportSheetGateway {
 
   private sheet(): GoogleAppsScript.Spreadsheet.Sheet {
     const spreadsheet = SpreadsheetApp.openById(this.spreadsheetId);
+    assertAppsScriptSchema(spreadsheet);
     const sheet = spreadsheet.getSheetByName(this.sheetName);
     if (!sheet) throw new Error('Onglet des notes introuvable');
     const headers = sheet.getRange(1, 1, 1, EXPENSE_REPORT_HEADERS.length).getValues()[0];
