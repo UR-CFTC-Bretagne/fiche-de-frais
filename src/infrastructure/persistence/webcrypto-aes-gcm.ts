@@ -1,9 +1,15 @@
 import type { AuthenticatedCipher, EncryptedRecord } from './encrypted-backup-store';
 
+function exactBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.length);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
 /**
- * Implémentation Web Crypto AES-256-GCM.
- * La clé doit être fournie par un gestionnaire de clés extérieur à ce module.
- * Utilisable en tests Node, pas encore intégrée à Apps Script.
+ * Prototype AES-256-GCM pour tests Node/Web Crypto.
+ * La clé reste fournie par un gestionnaire externe et n'est jamais versionnée.
+ * Ne constitue pas une intégration Google Apps Script.
  */
 export class WebCryptoAesGcm implements AuthenticatedCipher {
   constructor(private readonly key: CryptoKey, private readonly provider: Crypto = crypto) {
@@ -15,8 +21,9 @@ export class WebCryptoAesGcm implements AuthenticatedCipher {
   async encrypt(plaintext: Uint8Array, associatedData: Uint8Array): Promise<EncryptedRecord> {
     const nonce = this.provider.getRandomValues(new Uint8Array(12));
     const ciphertext = await this.provider.subtle.encrypt({
-      name: 'AES-GCM', iv: nonce, additionalData: associatedData, tagLength: 128,
-    }, this.key, plaintext);
+      name: 'AES-GCM', iv: exactBuffer(nonce),
+      additionalData: exactBuffer(associatedData), tagLength: 128,
+    }, this.key, exactBuffer(plaintext));
     return { version: 1, nonce, ciphertext: new Uint8Array(ciphertext) };
   }
 
@@ -25,8 +32,9 @@ export class WebCryptoAesGcm implements AuthenticatedCipher {
       throw new Error('Format chiffré invalide');
     }
     const plaintext = await this.provider.subtle.decrypt({
-      name: 'AES-GCM', iv: record.nonce, additionalData: associatedData, tagLength: 128,
-    }, this.key, record.ciphertext);
+      name: 'AES-GCM', iv: exactBuffer(record.nonce),
+      additionalData: exactBuffer(associatedData), tagLength: 128,
+    }, this.key, exactBuffer(record.ciphertext));
     return new Uint8Array(plaintext);
   }
 }
