@@ -32,7 +32,12 @@ async function setup(bytes = pdf, ownerId = actor.id) {
   };
   const useCase = new RegisterVerifiedAttachment(reader, digest,
     new RegisterAttachment(reports, new InMemoryExpenseLineRepository(), attachments,
-      { nextId: () => 'attach-fixture' }, { nowIso: () => '2026-10-25T10:00:00Z' }));
+      { nextId: () => 'attach-fixture' }, { nowIso: () => '2026-10-25T10:00:00Z' },
+      { verify: async ref => ref === fileRef && ownerId === actor.id ? {
+        privateFileRef: ref, reportId: 'report-fixture', uploadedByActorId: actor.id,
+        sha256: await digest.sha256(bytes), mediaType: 'application/pdf' as const,
+        sizeBytes: bytes.length,
+      } : null }));
   return { useCase, attachments };
 }
 
