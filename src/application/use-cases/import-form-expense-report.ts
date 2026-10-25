@@ -6,7 +6,7 @@ import {
   mapExpenseFormAnswers,
   type ExpenseFormSchema,
   type FormAnswer,
-} from '../../infrastructure/google/forms/form-response-mapper';
+} from '../contracts/form-response';
 
 /** L'identité du répondant DOIT provenir du serveur, jamais du formulaire. */
 export class ImportFormExpenseReport {
