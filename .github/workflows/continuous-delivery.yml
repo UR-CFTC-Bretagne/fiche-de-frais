@@ -1,0 +1,55 @@
+name: Livraison continue — artefact de recette
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: livraison-recette-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  recette:
+    name: Qualifier et préparer un artefact de recette
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Installer les dépendances
+        run: npm install --no-audit --no-fund
+      - name: Contrôler l'architecture
+        run: npm run check:architecture
+      - name: Vérifier le typage
+        run: npm run typecheck
+      - name: Exécuter les tests
+        run: npm test
+      - name: Compiler le socle
+        run: npm run build
+      - name: Préparer le manifeste de livraison
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d dist
+          mkdir -p release
+          tar -czf release/socle-typescript.tar.gz -C dist .
+          sha256sum release/socle-typescript.tar.gz > release/SHA256SUMS
+          printf 'Commit: %s\nDate UTC: %s\nType: artefact de recette NON DEPLOYABLE directement dans Apps Script\n' \
+            "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > release/NOTICE.txt
+      - name: Publier l'artefact de recette
+        uses: actions/upload-artifact@v4
+        with:
+          name: recette-socle-${{ github.sha }}
+          path: release/
+          if-no-files-found: error
+          retention-days: 14
