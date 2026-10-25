@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "project": "UR-CFTC-Bretagne/fiche-de-frais",
+  "releaseCandidate": null,
+  "approval": {
+    "approved": false,
+    "channel": "chatgpt",
+    "reference": null,
+    "approvedRevision": null
+  },
+  "checks": {
+    "completeWorkflow": false,
+    "verifiedIdentityAndRoles": false,
+    "approvedExpensePolicies": false,
+    "privateAttachments": false,
+    "protectedStorage": false,
+    "successfulStagingAcceptance": false,
+    "backupAndRestore": false,
+    "rgpdReview": false,
+    "rollbackTested": false,
+    "productionAccessApproved": false
+  }
+}
