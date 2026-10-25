@@ -36,6 +36,12 @@ jobs:
         run: npm test
       - name: Compiler le socle
         run: npm run build
+      - name: Installer le bundler de recette épinglé
+        run: npm install --no-save --no-package-lock --no-audit --no-fund esbuild@0.25.12
+      - name: Assembler un paquet Apps Script de recette
+        run: node scripts/build-apps-script.mjs
+      - name: Vérifier le paquet Apps Script
+        run: node scripts/check-apps-script-bundle.mjs
       - name: Préparer le manifeste de livraison
         shell: bash
         run: |
@@ -43,8 +49,9 @@ jobs:
           test -d dist
           mkdir -p release
           tar -czf release/socle-typescript.tar.gz -C dist .
-          sha256sum release/socle-typescript.tar.gz > release/SHA256SUMS
-          printf 'Commit: %s\nDate UTC: %s\nType: artefact de recette NON DEPLOYABLE directement dans Apps Script\n' \
+          tar -czf release/apps-script-recette.tar.gz -C build/apps-script .
+          sha256sum release/socle-typescript.tar.gz release/apps-script-recette.tar.gz > release/SHA256SUMS
+          printf 'Commit: %s\nDate UTC: %s\nType: bundle de sonde Apps Script de recette (NON DEPLOYE, zero scope OAuth)\n' \
             "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > release/NOTICE.txt
       - name: Publier l'artefact de recette
         uses: actions/upload-artifact@v4
