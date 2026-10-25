@@ -1,0 +1,49 @@
+name: Déploiement vers Apps Script de recette (opt-in)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploiement-apps-script-recette
+  cancel-in-progress: false
+
+jobs:
+  deploy-recette:
+    if: ${{ vars.ENABLE_RECETTE_DEPLOY == 'true' }}
+    environment: recette
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Installer les dépendances
+        run: npm install --no-audit --no-fund
+      - name: Contrôler le code
+        run: npm run check
+      - name: Assembler la sonde Apps Script
+        run: |
+          npm install --no-save --no-package-lock --no-audit --no-fund esbuild@0.25.12
+          node scripts/build-apps-script.mjs
+          node scripts/check-apps-script-bundle.mjs
+      - name: Vérifier les secrets et la cible de recette
+        env:
+          RECETTE_SCRIPT_ID: ${{ vars.RECETTE_SCRIPT_ID }}
+          RECETTE_APPROVED_SCRIPT_ID: ${{ vars.RECETTE_APPROVED_SCRIPT_ID }}
+          RECETTE_CLASPRC_JSON: ${{ secrets.RECETTE_CLASPRC_JSON }}
+        run: node scripts/prepare-staging-clasp.mjs
+      - name: Publier exclusivement la sonde sur le script de recette
+        run: npx --yes @google/clasp@3 push --force
+      - name: Créer une version de la sonde déployée
+        run: npx --yes @google/clasp@3 create-version "Recette ${GITHUB_SHA}"
+      - name: Supprimer les fichiers locaux de connexion
+        if: always()
+        run: rm -f .clasp.json "$HOME/.clasprc.json"
