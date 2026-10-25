@@ -101,6 +101,12 @@ Les spécifications et décisions à valider sont documentées dans le [cahier d
 
 La feuille de route provisoire couvre le cadrage (sprint 0), le socle technique, la saisie/barèmes, les justificatifs et l'analytique, les validations, les paiements/reportings puis la recette et la sécurité. Dates, responsables et priorités sont à confirmer.
 
+## Intégration et livraison continues
+
+Chaque push sur `main` déclenche les contrôles de qualité et la [livraison continue d'un artefact de recette](.github/workflows/continuous-delivery.yml). Les archives de code compilé sont conservées 14 jours dans GitHub Actions, accompagnées d'une empreinte SHA-256 et de la révision source.
+
+**La publication automatique de l'application n'est pas encore activée** : ce socle compilé n'est pas un bundle Google Apps Script déployable. La [procédure et les prérequis](docs/deployment/livraison-continue.md) définissent les étapes de sécurité nécessaires avant un déploiement réel. Le [contrôle manuel préalable](.github/workflows/production-gate.yml) n'effectue aucune publication.
+
 ## Sécurité et RGPD
 
 **Ce dépôt est public.** Ne jamais y committer de données de frais réelles, justificatifs, identité de mandaté, code INARIC personnel, RIB, secrets, jetons ou clés d'API. Les notes de frais peuvent révéler une appartenance syndicale. Il faudra faire valider les habilitations, la confidentialité, l'hébergement et les durées de conservation avant tout pilote.
