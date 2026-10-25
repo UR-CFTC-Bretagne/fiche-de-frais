@@ -29,6 +29,10 @@ jobs:
           set -euo pipefail
           test "$REQUESTED_SHA" = "$GITHUB_SHA"
           echo "Contrôle de révision réussi ; aucun script n'est déployé."
+      - name: Vérifier le dossier MVP et la décision approuvée dans la conversation
+        env:
+          REQUESTED_SHA: ${{ inputs.revision }}
+        run: node scripts/check-production-readiness.mjs
       - name: Expliquer la barrière de production
         shell: bash
         run: |
