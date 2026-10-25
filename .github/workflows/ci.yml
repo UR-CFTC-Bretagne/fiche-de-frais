@@ -26,5 +26,7 @@ jobs:
         run: npm run typecheck
       - name: Exécuter les tests
         run: npm test
+      - name: Tester le blocage du déploiement non approuvé
+        run: node scripts/test-production-gate.mjs
       - name: Compilation TypeScript préliminaire
         run: npm run build
