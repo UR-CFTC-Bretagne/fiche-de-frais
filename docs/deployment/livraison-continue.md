@@ -2,16 +2,16 @@
 
 ## État réel
 
-Le workflow GitHub Actions `continuous-delivery.yml` reconstruit automatiquement le socle à chaque push sur `main`, après vérification des frontières architecturales, du typage, des tests et de la compilation. Il publie un **artefact versionné de recette** (archive `tar.gz`, empreinte SHA-256, SHA de commit).
+Le workflow GitHub Actions `continuous-delivery.yml` reconstruit automatiquement le socle à chaque push sur `main`, après vérification des frontières architecturales, du typage, des tests et de la compilation. Il publie un **artefact versionné de recette** (archives `tar.gz`, empreintes SHA-256, SHA de commit), incluant une sonde Apps Script V8 construite par esbuild puis exécutée localement pour test de fumée.
 
-**Important : ceci est de la livraison continue (Continuous Delivery), et non encore du déploiement continu dans Google Apps Script.** Les modules TypeScript produits ne sont pas un bundle Apps Script exécutable : l'absence d'entrypoint et d'assemblage adapté interdit une publication sûre.
+**Important : ceci est de la livraison continue (Continuous Delivery), et non encore du déploiement continu dans Google Apps Script.** Un second paquet contient désormais une **sonde Apps Script V8 exécutable en recette isolée** (aucun accès Google et aucun endpoint HTTP), mais pas l'application complète de notes de frais. Aucun paquet n'est publié sur Google.
 
 ## Circuits
 
 | Circuit | Déclenchement | Résultat |
 | --- | --- | --- |
 | Intégration continue | Pull request et push | Contrôles du code et tests |
-| Livraison recette | Chaque push sur `main` | Archive de code compilé conservée 14 jours dans Actions |
+| Livraison recette | Chaque push sur `main` | Archives du socle compilé et du bundle de sonde Apps Script conservées 14 jours dans Actions |
 | Préparation production | Déclenchement manuel `production-gate.yml` | Vérification de révision et rappel des blocages ; aucune publication |
 | Production | Désactivée | Aucun accès, aucun scriptId ni secret de déploiement |
 
