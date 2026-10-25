@@ -1,0 +1,36 @@
+name: Préparation d'une demande de déploiement
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Commit à examiner (SHA complet de main)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Contrôles préalables uniquement — sans déploiement
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Vérifier que la révision est celle de main
+        env:
+          REQUESTED_SHA: ${{ inputs.revision }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$REQUESTED_SHA" = "$GITHUB_SHA"
+          echo "Contrôle de révision réussi ; aucun script n'est déployé."
+      - name: Expliquer la barrière de production
+        shell: bash
+        run: |
+          echo "::notice::La publication Apps Script n'est pas activée : aucun point d'entrée, bundling, authentification ou gestion de secrets de production validé."
+          echo "Examen manuel requis : docs/deployment/livraison-continue.md"
