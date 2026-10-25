@@ -42,6 +42,8 @@ jobs:
         run: node scripts/build-apps-script.mjs
       - name: Vérifier le paquet Apps Script
         run: node scripts/check-apps-script-bundle.mjs
+      - name: Tester le refus des configurations de recette non autorisées
+        run: node scripts/check-staging-gate.mjs
       - name: Préparer le manifeste de livraison
         shell: bash
         run: |
